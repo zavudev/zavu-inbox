@@ -1,0 +1,41 @@
+# Postgres overlay. Use it when you already run Postgres and would rather keep
+# one backup story than two:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+#
+# The dialect is picked from the URL, so this file only has to change it.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zavu_inbox
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zavu_inbox}
+      POSTGRES_DB: zavu_inbox
+    volumes:
+      - zavu-inbox-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zavu_inbox"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    environment:
+      DATABASE_URL: postgres://zavu_inbox:${POSTGRES_PASSWORD:-zavu_inbox}@postgres:5432/zavu_inbox
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    environment:
+      DATABASE_URL: postgres://zavu_inbox:${POSTGRES_PASSWORD:-zavu_inbox}@postgres:5432/zavu_inbox
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  zavu-inbox-pg:

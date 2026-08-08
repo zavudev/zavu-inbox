@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env*.local
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Local SQLite databases. The default DATABASE_URL points here.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

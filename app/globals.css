@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/**
+ * Zavu brand tokens (zavu-brand.md §5). An inbox is dense reading, so Light is
+ * the default theme and Dark is the opt-in, per §1.4.
+ *
+ * Colour budget per §5.5: roughly 85% background/surface, 12% text/muted, 3%
+ * Signal Violet as the single accent. System colours communicate state only,
+ * never decoration.
+ */
+
+@theme {
+  /* next/font injects these on <body>; the stack after them is the fallback
+     for when the font fails to load (brand §4.5). */
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-bg: #fafafa;
+  --color-fg: #0a0a0b;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f5;
+  --color-muted: #52525b;
+  --color-border: #e4e4e7;
+  --color-signal: #4340c7;
+
+  --color-success: #047857;
+  --color-warning: #a16207;
+  --color-error: #b91c1c;
+  --color-info: #0e7490;
+
+  --radius-card: 0.5rem;
+}
+
+.dark {
+  --color-bg: #000000;
+  --color-fg: #ffffff;
+  --color-surface: #18181b;
+  --color-surface-2: #27272a;
+  --color-muted: #a1a1aa;
+  --color-border: #27272a;
+  --color-signal: #615fff;
+
+  --color-success: #4df688;
+  --color-warning: #ffda5e;
+  --color-error: #ff5e5e;
+  --color-info: #6efaff;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* iOS zooms any input under 16px on focus. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Small uppercase labels need tracking to stay readable (brand §4.6). */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 4px;
+  }
+}

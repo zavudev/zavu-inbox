@@ -1,0 +1,60 @@
+# Default deployment: no database server at all. Zavu Inbox stores its workspace
+# state in a SQLite file on a volume, which is the cheapest thing that works and
+# is plenty for a team-sized inbox.
+#
+# To use Turso instead, set DATABASE_URL=libsql://<db>.turso.io and
+# DATABASE_AUTH_TOKEN in .env. Nothing else changes.
+#
+# To use Postgres:  docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+
+services:
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-file:/data/zavu-inbox.db}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
+    volumes:
+      - zavu-inbox-data:/data
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "4100:4100"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-file:/data/zavu-inbox.db}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
+      ZAVU_API_KEY: ${ZAVU_API_KEY}
+      ZAVU_WEBHOOK_SECRET: ${ZAVU_WEBHOOK_SECRET}
+      APP_URL: ${APP_URL:-http://localhost:4100}
+      CRON_SECRET: ${CRON_SECRET}
+      NODE_ENV: production
+    volumes:
+      - zavu-inbox-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Sends scheduled messages. One minute is enough: the endpoint claims each row
+  # before sending, so an overlapping tick cannot send anything twice.
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+    command: >
+      sh -c "apk add --no-cache curl >/dev/null &&
+             while true; do
+               curl -fsS -X POST -H \"Authorization: Bearer $$CRON_SECRET\" http://app:4100/api/cron/scheduled >/dev/null || true;
+               sleep 60;
+             done"
+    depends_on:
+      - app
+
+volumes:
+  zavu-inbox-data:
