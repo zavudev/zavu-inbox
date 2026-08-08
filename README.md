@@ -107,14 +107,14 @@ To receive webhooks on a laptop, expose the port with a tunnel (`cloudflared tun
 Zavu is the source of truth for messages, contacts, numbers and senders. Zavu Inbox stores only what Zavu does not know about: your users, and what they did to a thread.
 
 ```
-Contact ──> Zavu (delivery, compliance, AI) ──webhook──> Zavu Inbox ──> Postgres
-                        ^                                   │        (workspace state)
-                        └────────── REST API ───────────────┘
+Contact ──> Zavu (delivery, compliance, AI) ──webhook──> Zavu Inbox ──> your database
+                        ^                                   │      (SQLite, Turso or Postgres:
+                        └────────── REST API ───────────────┘       workspace state only)
 ```
 
 The one thing mirrored locally is the conversation row, because an inbox has to sort by last activity while filtering on assignee and status at the same time, and those live on opposite sides of the network. The mirror is a cache: every row can be rebuilt from `GET /v1/conversations`, and Settings has a re-sync button that does exactly that.
 
-Nothing in this app talks to a database Zavu owns, and nothing uses a private endpoint. It runs on the same public API your own integration would use. If something is hard to build here, it is hard for every Zavu customer, which is the point.
+There is no privileged path here. This app has exactly the access you do: the same public API, the same documented webhooks, the same rate limits. That is deliberate, and it is the reason the project is worth reading. If something turns out to be hard to build in here, it is hard for everyone building on Zavu, and the fix belongs in the API.
 
 ### Layout
 
@@ -142,11 +142,11 @@ lib/
 
 ## Contributing
 
-Issues and pull requests are welcome. Two rules that are easy to break:
+Issues and pull requests are welcome. Three invariants this codebase leans on, all easy to break by accident:
 
-1. Do not read Zavu's database directly. Everything goes through the public API.
-2. A sync must never overwrite workspace state. If it can silently unassign a thread, it is a bug.
-3. Schema changes land in both dialects, or the parity test stops them.
+1. **Everything on the Zavu side goes through the documented public API.** This app is a pure API client and stays one. If you need something the API does not expose, that is a gap worth an issue rather than something to route around, and the API getting better is the point of this project existing.
+2. **A sync must never overwrite workspace state.** Assignment, status, notes, tasks and snippets exist only here; Zavu knows nothing about them. If a code path can silently unassign a thread because an update arrived, that is a bug, not a merge conflict.
+3. **Schema changes land in both dialects.** `lib/db/schema/parity.test.ts` compares the SQLite and Postgres schemas column by column and will fail the build if you touch only one. That is deliberate: the alternative is a bug that only appears on the backend you were not running.
 
 ## License
 
