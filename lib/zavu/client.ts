@@ -259,7 +259,16 @@ export class ZavuClient {
 
   contacts = {
     list: (params?: {
+      /** Exact match on the primary phone number, E.164. Not a prefix. */
       phoneNumber?: string;
+      /**
+       * Free-text over name, phone and email. Case- and accent-insensitive, and
+       * a trailing fragment of a phone number matches.
+       *
+       * Results come back in relevance order rather than newest-first, and the
+       * cursor is opaque in both modes — start a fresh run when this changes.
+       */
+      search?: string;
       limit?: number;
       cursor?: string;
     }): Promise<ZavuPage<ZavuContact>> =>
@@ -285,7 +294,12 @@ export class ZavuClient {
 
     update: (
       contactId: string,
-      body: { defaultChannel?: string | null; metadata?: Record<string, string> }
+      body: {
+        /** Pass null to clear it and fall back to the contact's identifier. */
+        displayName?: string | null;
+        defaultChannel?: string | null;
+        metadata?: Record<string, string>;
+      }
     ): Promise<ZavuContact> =>
       this.request("PATCH", `/v1/contacts/${contactId}`, { body }),
   };

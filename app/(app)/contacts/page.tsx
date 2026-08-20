@@ -23,23 +23,16 @@ export default async function ContactsPage({
     const page = await zavu().contacts.list({
       limit: 50,
       cursor,
-      // The API filters by exact phone; anything else is matched client side
-      // below rather than pretending we have full-text search.
-      phoneNumber: q?.startsWith("+") ? q : undefined,
+      // Server-side across the whole project, over name, phone and email.
+      // This used to fetch one page and filter it here, so a contact on page
+      // two was unfindable.
+      search: q || undefined,
     });
     items = page.items;
     nextCursor = page.nextCursor;
   } catch (e) {
     error = describeZavuError(e);
   }
-
-  const filtered = q && !q.startsWith("+")
-    ? items.filter((c) =>
-        [c.displayName, c.primaryPhone, c.primaryEmail, c.profileName]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(q.toLowerCase()))
-      )
-    : items;
 
   return (
     <div className="flex h-full flex-col">
@@ -49,7 +42,7 @@ export default async function ContactsPage({
           <input
             name="q"
             defaultValue={q}
-            placeholder="Search this page, or type +phone"
+            placeholder="Search by name, phone, or email"
             className="h-8 w-72 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm outline-none placeholder:text-[var(--color-muted)] focus-visible:border-[var(--color-signal)]"
           />
         </form>
@@ -61,15 +54,19 @@ export default async function ContactsPage({
             <p className="font-medium text-[var(--color-error)]">{error.title}</p>
             <p className="text-[var(--color-muted)]">{error.detail}</p>
           </Card>
-        ) : filtered.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState
             icon={<Users className="size-6" />}
-            title="No contacts"
-            description="Contacts appear as soon as someone messages one of your numbers."
+            title={q ? "No contacts match" : "No contacts"}
+            description={
+              q
+                ? "Try a name, a full phone number, or an email address."
+                : "Contacts appear as soon as someone messages one of your numbers."
+            }
           />
         ) : (
           <Card className="divide-y divide-[var(--color-border)]">
-            {filtered.map((contact) => (
+            {items.map((contact) => (
               <Link
                 key={contact.id}
                 href={`/contacts/${contact.id}`}
@@ -105,7 +102,11 @@ export default async function ContactsPage({
         {nextCursor ? (
           <div className="mt-4 flex justify-center">
             <Link
-              href={`/contacts?cursor=${encodeURIComponent(nextCursor)}`}
+              // Carrying `q` matters: without it, page two of a search
+              // silently becomes page two of the unfiltered list.
+              href={`/contacts?cursor=${encodeURIComponent(nextCursor)}${
+                q ? `&q=${encodeURIComponent(q)}` : ""
+              }`}
               className="cursor-pointer text-sm text-[var(--color-signal)] hover:underline"
             >
               Load more
